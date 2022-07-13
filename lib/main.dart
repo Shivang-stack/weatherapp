@@ -15,6 +15,93 @@ class Home extends StatefulWidget {
   }
 }
 
+class MySearchDelegate extends SearchDelegate {
+  List<String> searchTerms = [
+    "Allahabad",
+    "Bangalore",
+    "Mangalore",
+    "Pune",
+    "Mumbai",
+    "Lucknow",
+    "Ranchi",
+    "Jamshedpur"
+  ];
+
+  // first overwrite to
+  // clear the search text
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        onPressed: () {
+          query = '';
+        },
+        icon: Icon(Icons.clear),
+      ),
+    ];
+  }
+
+  // second overwrite to pop out of search menu
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      onPressed: () {
+        close(context, query);
+      },
+      icon: Icon(Icons.arrow_back),
+    );
+  }
+
+  // third overwrite to show query result
+  @override
+  Widget buildResults(BuildContext context) {
+    List<String> matchQuery = [];
+    for (var city in searchTerms) {
+      if (city.toLowerCase().contains(query.toLowerCase())) {
+        matchQuery.add(city);
+      }
+    }
+    return ListView.builder(
+      itemCount: matchQuery.length,
+      itemBuilder: (context, index) {
+        var result = matchQuery[index];
+        return ListTile(
+          title: Text(result),
+          onTap: () {
+            query = matchQuery[index];
+            close(context, query);
+          },
+        );
+      },
+    );
+  }
+
+  // last overwrite to show the
+  // querying process at the runtime
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    List<String> matchQuery = [];
+    for (var city in searchTerms) {
+      if (city.toLowerCase().contains(query.toLowerCase())) {
+        matchQuery.add(city);
+      }
+    }
+    return ListView.builder(
+      itemCount: matchQuery.length,
+      itemBuilder: (context, index) {
+        var result = matchQuery[index];
+        return ListTile(
+          title: Text(result),
+          onTap: () {
+            query = matchQuery[index];
+            close(context, query);
+          },
+        );
+      },
+    );
+  }
+}
+
 class _HomeState extends State<Home> {
   var temp;
   var description;
@@ -22,9 +109,11 @@ class _HomeState extends State<Home> {
   var humidity;
   var windSpeed;
 
+  var location = 'Bengaluru';
+
   Future getWeather() async {
     http.Response response = await http.get(Uri.parse(
-        "http://api.openweathermap.org/data/2.5/weather?q=Allahabad&appid=03cf93c8b035d801d6ce27c7324089c9"));
+        "http://api.openweathermap.org/data/2.5/weather?q=${location}&appid=03cf93c8b035d801d6ce27c7324089c9"));
     var results = jsonDecode(response.body);
     setState(() {
       this.temp = results['main']['temp'];
@@ -44,12 +133,27 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Search'),
+        actions: [
+          IconButton(
+              onPressed: () async {
+                final finalresult = await showSearch(
+                    context: context, delegate: MySearchDelegate());
+                setState(() {
+                  location = finalresult;
+                  this.getWeather();
+                });
+              },
+              icon: const Icon(Icons.search))
+        ],
+      ),
       body: Column(
         children: <Widget>[
           Container(
             height: MediaQuery.of(context).size.height / 3,
             width: MediaQuery.of(context).size.width,
-            color: Colors.red,
+            color: Colors.blue,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -57,7 +161,7 @@ class _HomeState extends State<Home> {
                 Padding(
                   padding: EdgeInsets.only(bottom: 10.0),
                   child: Text(
-                    "Currently in Allahabad",
+                    "Currently in ${location}",
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 14.0,
@@ -65,7 +169,9 @@ class _HomeState extends State<Home> {
                   ),
                 ),
                 Text(
-                  temp != null ? temp.toString() + "\u00B0" : "Loading",
+                  temp != null
+                      ? (temp - 272).toStringAsFixed(2) + "\u00B0"
+                      : "Loading",
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 40.0,
@@ -92,8 +198,9 @@ class _HomeState extends State<Home> {
                   ListTile(
                     leading: FaIcon(FontAwesomeIcons.thermometerHalf),
                     title: Text("Temperature"),
-                    trailing: Text(
-                        temp != null ? temp.toString() + "\u00B0" : "Loading"),
+                    trailing: Text(temp != null
+                        ? (temp - 272).toStringAsFixed(2) + "\u00B0"
+                        : "Loading"),
                   ),
                   ListTile(
                     leading: FaIcon(FontAwesomeIcons.cloud),
